@@ -1,5 +1,5 @@
 const express = require("express");
-const cors = require("cors"); // Esta es la única declaración que necesitas
+const cors = require("cors");
 const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const ExcelJS = require("exceljs");
@@ -9,7 +9,7 @@ const app = express();
 const upload = multer({ dest: "uploads/" });
 
 // Configuración de CORS
-app.use(cors({ origin: "https://convert-pdf-to-excel.vercel.app/" }));
+app.use(cors({ origin: "https://convert-pdf-to-excel.vercel.app" }));
 
 app.use(express.json());
 
