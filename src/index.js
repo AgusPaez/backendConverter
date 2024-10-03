@@ -7,6 +7,8 @@ const fs = require("fs");
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
+const cors = require("cors");
+app.use(cors({ origin: "https://convert-pdf-to-excel.vercel.app/" }));
 
 app.use(cors());
 app.use(express.json());
@@ -42,4 +44,4 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Server started on port 5000"));
+app.listen(port, () => console.log(`Server running on port ${port}`));
