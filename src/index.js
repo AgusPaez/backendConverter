@@ -23,8 +23,8 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Datos PDF");
 
-    // Encabezados (dinámicos dependiendo del PDF)
-    worksheet.addRow(["1Art", "2Descripcion", "3%Iva", "4Lista 4"]);
+    // Encabezados
+    worksheet.addRow(["Art", "Descripción", "%Iva", "Precio"]);
 
     // Separar el texto en líneas
     const rows = pdfData.text.split("\n");
@@ -34,18 +34,19 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       // Verificar si la línea es un nuevo Rubro
       const rubroMatch = row.match(/^Rubro:\s*\(([^)]+)\)\s*(.+)$/);
       if (rubroMatch) {
-        currentRubro = rubroMatch[2].trim(); // Guardar el nombre del rubro
-
+        currentRubro = rubroMatch[2].trim();
         // Agregar una nueva fila al Excel con el nombre del Rubro
         worksheet.addRow([`Rubro: ${currentRubro}`, "", "", ""]);
       } else {
         // Verificar si la línea tiene productos
-        const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.]+)$/);
+        const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.\s]+)$/);
         if (productMatch) {
-          const codigo = productMatch[1].trim(); // Código de artículo (1Art)
-          const descripcion = productMatch[2].trim(); // Descripción del artículo (2Descripcion)
-          const precio = productMatch[3].trim().replace(",", "."); // Precio (4Lista 4)
-          const iva = "0.00"; // Asumimos que el %Iva es fijo en este caso
+          const codigo = productMatch[1].trim(); // Código de artículo (Art)
+          const descripcion = productMatch[2].trim(); // Descripción del artículo (Descripción)
+          const precio = productMatch[3].trim().replace(",", "."); // Precio (Lista 4)
+
+          // El %Iva es fijo, puedes personalizarlo si es necesario
+          const iva = "0";
 
           // Agregar una nueva fila al Excel con los datos
           worksheet.addRow([codigo, descripcion, iva, precio]);
@@ -61,7 +62,9 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=converted.xlsx");
 
     await workbook.xlsx.write(res);
-    fs.unlinkSync(filePath); // Eliminar el archivo PDF subido del servidor
+
+    // Eliminar el archivo PDF subido del servidor
+    fs.unlinkSync(filePath);
   } catch (error) {
     console.error("Error processing the PDF:", error);
     res.status(500).send("Error processing the file");
