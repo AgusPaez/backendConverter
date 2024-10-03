@@ -23,10 +23,31 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Datos PDF");
 
-    // Convertir el texto a filas en Excel
+    // Encabezados de las columnas
+    worksheet.addRow(["Rubro", "Código", "Descripción", "IVA", "Precio"]);
+
+    // Separar el texto en líneas
     const rows = pdfData.text.split("\n");
+    let currentRubro = "";
+
     rows.forEach((row) => {
-      worksheet.addRow([row]);
+      // Verificar si la línea es un nuevo Rubro
+      const rubroMatch = row.match(/^Rubro:\s*\(([^)]+)\)\s*(.+)$/);
+      if (rubroMatch) {
+        currentRubro = rubroMatch[2].trim(); // Guardar el nombre del rubro
+      } else {
+        // Verificar si la línea tiene productos
+        const productMatch = row.match(/^(\d+)\s+(.+)\s+([\d,.]+)$/);
+        if (productMatch) {
+          const codigo = productMatch[1].trim();
+          const descripcion = productMatch[2].trim();
+          const precio = productMatch[3].trim().replace(",", "."); // Cambiar la coma por un punto
+          const iva = 0.0; // Valor fijo de IVA
+
+          // Agregar una nueva fila al Excel con los datos
+          worksheet.addRow([currentRubro, codigo, descripcion, iva, precio]);
+        }
+      }
     });
 
     // Enviar el Excel al cliente
