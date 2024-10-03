@@ -31,30 +31,40 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     let currentRubro = "";
 
     rows.forEach((row) => {
-      // Verificar si la línea es un nuevo Rubro
-      const rubroMatch = row.match(/^Rubro:\s*\(([^)]+)\)\s*(.+)$/);
+      // Limpiar la línea de texto
+      row = row.trim();
+
+      // Ignorar líneas vacías o sin valor
+      if (row === "") return;
+
+      // Verificar si la línea es un nuevo Rubro (asumiendo que comienza con "Rubro:" y tiene algún contenido después)
+      const rubroMatch = row.match(/^Rubro:\s*(.+)$/);
       if (rubroMatch) {
-        currentRubro = rubroMatch[2].trim();
+        currentRubro = rubroMatch[1].trim();
         // Agregar una nueva fila al Excel con el nombre del Rubro
         worksheet.addRow([`Rubro: ${currentRubro}`, "", "", ""]);
-      } else {
-        // Verificar si la línea tiene productos usando una expresión regular mejorada
-        const productMatch = row.match(/^(\d+)\s+([A-Za-z\s]+)\s+([\d,.]+)$/);
-        if (productMatch) {
-          const codigo = productMatch[1].trim(); // Código de artículo (Art)
-          const descripcion = productMatch[2].trim(); // Descripción del artículo (Descripción)
-          const precio = productMatch[3]
-            .trim()
-            .replace(".", "")
-            .replace(",", "."); // Precio (Lista 4)
-
-          // El %Iva es fijo, puedes personalizarlo si es necesario
-          const iva = "0";
-
-          // Agregar una nueva fila al Excel con los datos
-          worksheet.addRow([codigo, descripcion, iva, precio]);
-        }
+        return;
       }
+
+      // Verificar si la línea tiene un producto basado en un patrón típico (número seguido de texto y un precio al final)
+      const productMatch = row.match(/^(\d+)\s+([A-Za-z\s]+)\s+([\d,.]+)$/);
+      if (productMatch) {
+        const codigo = productMatch[1].trim(); // Código de artículo (Art)
+        const descripcion = productMatch[2].trim(); // Descripción del artículo (Descripción)
+        const precio = productMatch[3]
+          .trim()
+          .replace(".", "")
+          .replace(",", "."); // Precio (Lista 4)
+
+        // El %Iva es fijo en este caso
+        const iva = "0";
+
+        // Agregar una nueva fila al Excel con los datos del producto
+        worksheet.addRow([codigo, descripcion, iva, precio]);
+        return;
+      }
+
+      // Si la línea no coincide con un rubro o producto, simplemente la ignoramos.
     });
 
     // Enviar el Excel al cliente
