@@ -23,8 +23,8 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Datos PDF");
 
-    // Encabezados de las columnas
-    worksheet.addRow(["Rubro", "Código", "Descripción", "IVA", "Precio"]);
+    // Encabezados (dinámicos dependiendo del PDF)
+    worksheet.addRow(["1Art", "2Descripcion", "3%Iva", "4Lista 4"]);
 
     // Separar el texto en líneas
     const rows = pdfData.text.split("\n");
@@ -35,17 +35,20 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       const rubroMatch = row.match(/^Rubro:\s*\(([^)]+)\)\s*(.+)$/);
       if (rubroMatch) {
         currentRubro = rubroMatch[2].trim(); // Guardar el nombre del rubro
+
+        // Agregar una nueva fila al Excel con el nombre del Rubro
+        worksheet.addRow([`Rubro: ${currentRubro}`, "", "", ""]);
       } else {
         // Verificar si la línea tiene productos
-        const productMatch = row.match(/^(\d+)\s+(.+)\s+([\d,.]+)$/);
+        const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.]+)$/);
         if (productMatch) {
-          const codigo = productMatch[1].trim();
-          const descripcion = productMatch[2].trim();
-          const precio = productMatch[3].trim().replace(",", "."); // Cambiar la coma por un punto
-          const iva = 0.0; // Valor fijo de IVA
+          const codigo = productMatch[1].trim(); // Código de artículo (1Art)
+          const descripcion = productMatch[2].trim(); // Descripción del artículo (2Descripcion)
+          const precio = productMatch[3].trim().replace(",", "."); // Precio (4Lista 4)
+          const iva = "0.00"; // Asumimos que el %Iva es fijo en este caso
 
           // Agregar una nueva fila al Excel con los datos
-          worksheet.addRow([currentRubro, codigo, descripcion, iva, precio]);
+          worksheet.addRow([codigo, descripcion, iva, precio]);
         }
       }
     });
