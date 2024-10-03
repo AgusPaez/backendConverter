@@ -29,7 +29,6 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     // Separar el texto en líneas
     const rows = pdfData.text.split("\n");
     let currentRubro = "";
-    let lastDescription = "";
 
     rows.forEach((row) => {
       // Limpiar la línea de texto
@@ -48,55 +47,24 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       }
 
       // Verificar si la línea tiene un producto
-      const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.]+)$/);
+      const productMatch = row.match(/^(.+?)\s+([\d,.]+)\s+(\d+)$/);
       if (productMatch) {
-        const precio = productMatch[1].trim(); // Código de artículo (Art)
-        const descripcionCompleta = productMatch[2].trim();
-        const index = descripcionCompleta.search(/ \d/);
-
-        // Si se encuentra un espacio seguido de un número, corta la cadena
-        const descripcion =
-          index !== -1
-            ? descripcionCompleta.slice(0, index)
-            : descripcionCompleta;
-
-        // Descripción del artículo (Descripción)
-        const codigo = productMatch[3]
+        const descripcion = productMatch[1].trim(); // Descripción del artículo (Descripción)
+        const precio = productMatch[2]
           .trim()
           .replace(".", "")
           .replace(",", "."); // Precio (Lista 4)
+        const codigo = productMatch[3].trim(); // Código de artículo (Art)
 
         // El %Iva es fijo en este caso
         const iva = "0";
 
         // Agregar una nueva fila al Excel con los datos del producto
         worksheet.addRow([codigo, descripcion, iva, precio]);
-        lastDescription = ""; // Reiniciar la última descripción
         return;
       }
 
-      // Si la línea no coincide con un rubro o producto, verificar si es una descripción
-      const descriptionMatch = row.match(/^(.+?)\s+([\d,.]+)$/);
-      if (descriptionMatch && lastDescription) {
-        // Se considera una descripción adicional para el último producto
-        const precio = descriptionMatch[2]
-          .trim()
-          .replace(".", "")
-          .replace(",", ".");
-
-        // Agregar una nueva fila con la descripción y precio
-        worksheet.addRow([
-          lastDescription,
-          row.replace(/([\d,.]+)$/, "").trim(),
-          "0",
-          precio,
-        ]);
-        lastDescription = ""; // Reiniciar
-        return;
-      }
-
-      // Guardar la descripción para la próxima coincidencia de precio
-      lastDescription = row;
+      // Si la línea no coincide con un rubro o producto, simplemente la ignoramos.
     });
 
     // Enviar el Excel al cliente
