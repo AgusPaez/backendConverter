@@ -24,7 +24,19 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     const worksheet = workbook.addWorksheet("Datos PDF");
 
     // Encabezados
-    worksheet.addRow(["Art", "Descripción", "%Iva", "Precio"]);
+    const headers = ["Art", "Descripción", "%Iva", "Precio"];
+    worksheet.addRow(headers);
+
+    // Agregar bordes a los encabezados
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
 
     // Separar el texto en líneas
     const rows = pdfData.text.split("\n");
@@ -50,17 +62,26 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       const productMatch = row.match(/^(.+?)\s+([\d,.]+)\s+(\d+)$/);
       if (productMatch) {
         const descripcion = productMatch[1].trim(); // Descripción del artículo (Descripción)
-        const precio = productMatch[2]
-          .trim()
-          .replace(".", "")
-          .replace(",", "."); // Precio (Lista 4)
+        const precio =
+          "$" + productMatch[2].trim().replace(".", "").replace(",", "."); // Agregar el signo de pesos al precio
         const codigo = productMatch[3].trim(); // Código de artículo (Art)
 
         // El %Iva es fijo en este caso
         const iva = "0";
 
         // Agregar una nueva fila al Excel con los datos del producto
-        worksheet.addRow([codigo, descripcion, iva, precio]);
+        const newRow = worksheet.addRow([codigo, descripcion, iva, precio]);
+
+        // Aplicar bordes a la fila del producto
+        newRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+
         return;
       }
 
