@@ -50,9 +50,18 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       // Verificar si la línea tiene un producto
       const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.]+)$/);
       if (productMatch) {
-        const codigo = productMatch[1].trim(); // Código de artículo (Art)
-        const descripcion = productMatch[2].trim(); // Descripción del artículo (Descripción)
-        const precio = productMatch[3]
+        const precio = productMatch[1].trim(); // Código de artículo (Art)
+        const descripcionCompleta = productMatch[2].trim();
+        const index = descripcionCompleta.search(/ \d/);
+
+        // Si se encuentra un espacio seguido de un número, corta la cadena
+        const descripcion =
+          index !== -1
+            ? descripcionCompleta.slice(0, index)
+            : descripcionCompleta;
+
+        // Descripción del artículo (Descripción)
+        const codigo = productMatch[3]
           .trim()
           .replace(".", "")
           .replace(",", "."); // Precio (Lista 4)
