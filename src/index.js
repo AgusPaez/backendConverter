@@ -38,12 +38,15 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
         // Agregar una nueva fila al Excel con el nombre del Rubro
         worksheet.addRow([`Rubro: ${currentRubro}`, "", "", ""]);
       } else {
-        // Verificar si la línea tiene productos
-        const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.\s]+)$/);
+        // Verificar si la línea tiene productos usando una expresión regular mejorada
+        const productMatch = row.match(/^(\d+)\s+([A-Za-z\s]+)\s+([\d,.]+)$/);
         if (productMatch) {
           const codigo = productMatch[1].trim(); // Código de artículo (Art)
           const descripcion = productMatch[2].trim(); // Descripción del artículo (Descripción)
-          const precio = productMatch[3].trim().replace(",", "."); // Precio (Lista 4)
+          const precio = productMatch[3]
+            .trim()
+            .replace(".", "")
+            .replace(",", "."); // Precio (Lista 4)
 
           // El %Iva es fijo, puedes personalizarlo si es necesario
           const iva = "0";
