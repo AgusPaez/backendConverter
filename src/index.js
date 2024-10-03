@@ -29,6 +29,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     // Separar el texto en líneas
     const rows = pdfData.text.split("\n");
     let currentRubro = "";
+    let lastDescription = "";
 
     rows.forEach((row) => {
       // Limpiar la línea de texto
@@ -37,7 +38,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       // Ignorar líneas vacías o sin valor
       if (row === "") return;
 
-      // Verificar si la línea es un nuevo Rubro (asumiendo que comienza con "Rubro:" y tiene algún contenido después)
+      // Verificar si la línea es un nuevo Rubro
       const rubroMatch = row.match(/^Rubro:\s*(.+)$/);
       if (rubroMatch) {
         currentRubro = rubroMatch[1].trim();
@@ -46,8 +47,8 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
         return;
       }
 
-      // Verificar si la línea tiene un producto basado en un patrón típico (número seguido de texto y un precio al final)
-      const productMatch = row.match(/^(\d+)\s+([A-Za-z\s]+)\s+([\d,.]+)$/);
+      // Verificar si la línea tiene un producto
+      const productMatch = row.match(/^(\d+)\s+(.+?)\s+([\d,.]+)$/);
       if (productMatch) {
         const codigo = productMatch[1].trim(); // Código de artículo (Art)
         const descripcion = productMatch[2].trim(); // Descripción del artículo (Descripción)
@@ -61,10 +62,32 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
 
         // Agregar una nueva fila al Excel con los datos del producto
         worksheet.addRow([codigo, descripcion, iva, precio]);
+        lastDescription = ""; // Reiniciar la última descripción
         return;
       }
 
-      // Si la línea no coincide con un rubro o producto, simplemente la ignoramos.
+      // Si la línea no coincide con un rubro o producto, verificar si es una descripción
+      const descriptionMatch = row.match(/^(.+?)\s+([\d,.]+)$/);
+      if (descriptionMatch && lastDescription) {
+        // Se considera una descripción adicional para el último producto
+        const precio = descriptionMatch[2]
+          .trim()
+          .replace(".", "")
+          .replace(",", ".");
+
+        // Agregar una nueva fila con la descripción y precio
+        worksheet.addRow([
+          lastDescription,
+          row.replace(/([\d,.]+)$/, "").trim(),
+          "0",
+          precio,
+        ]);
+        lastDescription = ""; // Reiniciar
+        return;
+      }
+
+      // Guardar la descripción para la próxima coincidencia de precio
+      lastDescription = row;
     });
 
     // Enviar el Excel al cliente
