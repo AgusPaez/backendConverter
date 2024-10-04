@@ -1,135 +1,96 @@
-const express = require("express");
-const cors = require("cors");
-const multer = require("multer");
-const pdfParse = require("pdf-parse");
-const ExcelJS = require("exceljs");
-const fs = require("fs");
+import React, { useState } from "react";
+import { Form, Button, Container, Spinner, Alert } from "react-bootstrap";
+import axios from "axios";
+import "./App.css";
 
-const app = express();
-const upload = multer({ dest: "uploads/" });
+function App() {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false); // Estado para el spinner de carga
+  const [error, setError] = useState(null); // Estado para manejar errores
 
-// Configuración de CORS
-app.use(cors({ origin: "https://convert-pdf-to-excel.vercel.app" }));
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    setError(null); // Limpiar errores cuando se seleccione un nuevo archivo
+  };
 
-app.use(express.json());
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      setError("Por favor, selecciona un archivo PDF.");
+      return;
+    }
 
-app.post("/upload", upload.single("pdf"), async (req, res) => {
-  try {
-    const filePath = req.file.path;
-    const pdfBuffer = fs.readFileSync(filePath);
-    const pdfData = await pdfParse(pdfBuffer);
+    setLoading(true); // Mostrar spinner de carga
+    const formData = new FormData();
+    formData.append("pdf", file);
 
-    // Crear un nuevo archivo Excel
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Datos PDF");
+    try {
+      const response = await axios.post(
+        "https://backendconverter.onrender.com/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          responseType: "blob",
+        }
+      );
 
-    // Encabezados
-    const headers = [
-      "Art",
-      "Descripción",
-      "%Iva",
-      "Cantidad",
-      "Precio por Unidad",
-      "Precio Total",
-    ];
-    worksheet.addRow(headers);
+      // Crear enlace de descarga para el archivo Excel
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "converted.xlsx");
+      document.body.appendChild(link);
+      link.click();
 
-    // Agregar bordes a los encabezados
-    const headerRow = worksheet.getRow(1);
-    headerRow.eachCell((cell) => {
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-    });
+      // Limpiar el archivo seleccionado y el error después de la descarga
+      setFile(null);
+      setError(null);
+    } catch (error) {
+      setError(
+        "Hubo un error al convertir el archivo. Por favor, inténtalo de nuevo."
+      );
+      console.error("Error uploading the file:", error);
+    } finally {
+      setLoading(false); // Ocultar spinner de carga
+    }
+  };
 
-    // Separar el texto en líneas
-    const rows = pdfData.text.split("\n");
-    let currentRubro = "";
+  return (
+    <Container className="mt-4">
+      <h1>Bienvenido</h1>
+      <h2>Convert PDF to Excel</h2>
+      {error && <Alert variant="danger">{error}</Alert>}
+      <Form onSubmit={handleSubmit}>
+        <Form.Group>
+          <Form.Label>Upload PDF</Form.Label>
+          <Form.Control type="file" onChange={handleFileChange} />
+        </Form.Group>
+        <Button
+          variant="primary"
+          type="submit"
+          className="mt-3"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+              />
+              {"  "} Convirtiendo...
+            </>
+          ) : (
+            "Convertir a Excel"
+          )}
+        </Button>
+      </Form>
+    </Container>
+  );
+}
 
-    rows.forEach((row) => {
-      // Limpiar la línea de texto
-      row = row.trim();
-
-      // Ignorar líneas vacías o sin valor
-      if (row === "") return;
-
-      // Verificar si la línea es un nuevo Rubro
-      const rubroMatch = row.match(/^Rubro:\s*(.+)$/);
-      if (rubroMatch) {
-        currentRubro = rubroMatch[1].trim();
-        // Agregar una nueva fila al Excel con el nombre del Rubro
-        worksheet.addRow([`Rubro: ${currentRubro}`, "", "", "", "", ""]);
-        return;
-      }
-
-      // Verificar si la línea tiene un producto y extraer cantidad y precio
-      const productMatch = row.match(/^(.+?)\s+([\d,.]+)\s+(\d+)$/);
-      if (productMatch) {
-        const descripcion = productMatch[1].trim(); // Descripción del artículo (Descripción)
-
-        // Convertir el precio total a número (eliminando caracteres no deseados)
-        const totalPriceStr = productMatch[2].trim(); // Eliminar signos de pesos y espacios
-        const totalPrice = parseFloat(totalPriceStr.replace(/,/g, "")); // Reemplazar la coma para convertir correctamente
-
-        const codigo = productMatch[3].trim(); // Código de artículo (Art)
-
-        // Extraer la cantidad de unidades (número antes de "X")
-        const quantityMatch = row.match(/X(\d+)U/);
-        const cantidad = quantityMatch ? parseInt(quantityMatch[1]) : 1; // Por defecto es 1 si no se encuentra
-
-        // Calcular el precio por unidad
-        const precioPorUnidad =
-          cantidad > 0 ? (totalPrice / cantidad).toFixed(4) : 0;
-
-        // El %Iva es fijo en este caso
-        const iva = "0";
-
-        // Agregar una nueva fila al Excel con los datos del producto
-        const newRow = worksheet.addRow([
-          codigo,
-          descripcion,
-          iva,
-          cantidad,
-          ` $${precioPorUnidad}`, // Asegúrate de que el precio por unidad esté bien formateado
-          ` $${totalPrice.toFixed(4)}`, // Formatear el precio total
-        ]);
-
-        // Aplicar bordes a la fila del producto
-        newRow.eachCell((cell) => {
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-        });
-
-        return;
-      }
-
-      // Si la línea no coincide con un rubro o producto, simplemente la ignoramos.
-    });
-
-    // Enviar el Excel al cliente
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader("Content-Disposition", "attachment; filename=converted.xlsx");
-
-    await workbook.xlsx.write(res);
-
-    // Eliminar el archivo PDF subido del servidor
-    fs.unlinkSync(filePath);
-  } catch (error) {
-    console.error("Error processing the PDF:", error);
-    res.status(500).send("Error processing the file");
-  }
-});
-
-// Asegúrate de declarar la variable port antes de utilizarla
-const port = process.env.PORT || 5000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+export default App;
