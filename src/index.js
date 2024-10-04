@@ -24,7 +24,14 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     const worksheet = workbook.addWorksheet("Datos PDF");
 
     // Encabezados
-    const headers = ["Art", "Descripción", "%Iva", "Precio"];
+    const headers = [
+      "Art",
+      "Descripción",
+      "%Iva",
+      "Cantidad",
+      "Precio por Unidad",
+      "Precio Total",
+    ];
     worksheet.addRow(headers);
 
     // Agregar bordes a los encabezados
@@ -54,23 +61,36 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       if (rubroMatch) {
         currentRubro = rubroMatch[1].trim();
         // Agregar una nueva fila al Excel con el nombre del Rubro
-        worksheet.addRow([`Rubro: ${currentRubro}`, "", "", ""]);
+        worksheet.addRow([`Rubro: ${currentRubro}`, "", "", "", "", ""]);
         return;
       }
 
-      // Verificar si la línea tiene un producto
+      // Verificar si la línea tiene un producto y extraer cantidad y precio
       const productMatch = row.match(/^(.+?)\s+([\d,.]+)\s+(\d+)$/);
       if (productMatch) {
         const descripcion = productMatch[1].trim(); // Descripción del artículo (Descripción)
-        const precio =
-          "$" + productMatch[2].trim().replace(".", "").replace(",", "."); // Agregar el signo de pesos al precio
+        const totalPrice = "$" + productMatch[2].trim(); // Precio total
         const codigo = productMatch[3].trim(); // Código de artículo (Art)
+
+        // Extraer la cantidad de unidades (número antes de "X")
+        const quantityMatch = row.match(/X(\d+)U/);
+        const cantidad = quantityMatch ? parseInt(quantityMatch[1]) : 1; // Por defecto es 1 si no se encuentra
+
+        // Calcular el precio por unidad
+        const precioPorUnidad = "$"(totalPrice / cantidad).toFixed(6);
 
         // El %Iva es fijo en este caso
         const iva = "0";
 
         // Agregar una nueva fila al Excel con los datos del producto
-        const newRow = worksheet.addRow([codigo, descripcion, iva, precio]);
+        const newRow = worksheet.addRow([
+          codigo,
+          descripcion,
+          iva,
+          cantidad,
+          `$${precioPorUnidad}`,
+          `$${totalPrice}`,
+        ]);
 
         // Aplicar bordes a la fila del producto
         newRow.eachCell((cell) => {
