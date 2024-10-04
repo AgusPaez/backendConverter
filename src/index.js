@@ -69,15 +69,16 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       const productMatch = row.match(/^(.+?)\s+([\d,.]+)\s+(\d+)$/);
       if (productMatch) {
         const descripcion = productMatch[1].trim(); // Descripción del artículo (Descripción)
-        const totalPriceStr = productMatch[2].trim(); // Precio total como string
+
+        // Convertir el precio total a número (eliminando caracteres no deseados)
+        const totalPriceStr = productMatch[2].trim(); // Eliminar signos de pesos y espacios
+        const totalPrice = parseFloat(totalPriceStr.replace(/,/g, "")); // Reemplazar la coma para convertir correctamente
+
         const codigo = productMatch[3].trim(); // Código de artículo (Art)
 
         // Extraer la cantidad de unidades (número antes de "X")
         const quantityMatch = row.match(/X(\d+)U/);
         const cantidad = quantityMatch ? parseInt(quantityMatch[1]) : 1; // Por defecto es 1 si no se encuentra
-
-        // Convertir el precio total a número (eliminando el signo de pesos)
-        const totalPrice = parseFloat(totalPriceStr);
 
         // Calcular el precio por unidad
         const precioPorUnidad =
@@ -92,7 +93,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
           descripcion,
           iva,
           cantidad,
-          ` $${precioPorUnidad}`,
+          ` $${precioPorUnidad}`, // Asegúrate de que el precio por unidad esté bien formateado
           ` $${totalPrice.toFixed(4)}`, // Formatear el precio total
         ]);
 
