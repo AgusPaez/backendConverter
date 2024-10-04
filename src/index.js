@@ -77,7 +77,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
         const cantidad = quantityMatch ? parseInt(quantityMatch[1]) : 1; // Por defecto es 1 si no se encuentra
 
         // Calcular el precio por unidad
-        const precioPorUnidad = "$"(totalPrice / cantidad).toFixed(6);
+        const precioPorUnidad = "$" + (totalPrice / cantidad).toFixed(6);
 
         // El %Iva es fijo en este caso
         const iva = "0";
