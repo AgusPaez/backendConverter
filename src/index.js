@@ -66,22 +66,18 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       }
 
       // Verificar si la línea tiene un producto y extraer cantidad y precio
-      // Asegúrate de que la expresión regular coincida con el formato correcto
-      const productMatch = row.match(
-        /^(.+?)\s+([\d,.]+)\s+X(\d+)U\s+\$?([\d,.]+)$/
-      );
+      const productMatch = row.match(/^(.+?)\s+([\d,.]+)\s+(\d+)$/);
       if (productMatch) {
         const descripcion = productMatch[1].trim(); // Descripción del artículo (Descripción)
-        const totalPriceStr = productMatch[4].trim(); // Precio total como string
-        const codigo = productMatch[2].trim(); // Código de artículo (Art)
+        const totalPriceStr = productMatch[2].trim(); // Precio total como string
+        const codigo = productMatch[3].trim(); // Código de artículo (Art)
 
-        // Extraer la cantidad de unidades (número después de "X")
-        const cantidad = parseInt(productMatch[3].trim(), 10); // Convertir a entero
+        // Extraer la cantidad de unidades (número antes de "X")
+        const quantityMatch = row.match(/X(\d+)U/);
+        const cantidad = quantityMatch ? parseInt(quantityMatch[1]) : 1; // Por defecto es 1 si no se encuentra
 
         // Convertir el precio total a número (eliminando el signo de pesos)
-        const totalPrice = parseFloat(
-          totalPriceStr.replace(/[$.]/g, "").replace(/,/g, ".")
-        );
+        const totalPrice = parseFloat(totalPriceStr);
 
         // Calcular el precio por unidad
         const precioPorUnidad =
@@ -96,8 +92,8 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
           descripcion,
           iva,
           cantidad,
-          `$${precioPorUnidad}`,
-          `$${totalPrice.toFixed(2)}`, // Formatear el precio total
+          ` $${precioPorUnidad}`,
+          ` $${totalPrice.toFixed(4)}`, // Formatear el precio total
         ]);
 
         // Aplicar bordes a la fila del producto
@@ -133,6 +129,6 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   }
 });
 
-// Asegúrate de declarar la variable `port` antes de utilizarla
+// Asegúrate de declarar la variable port antes de utilizarla
 const port = process.env.PORT || 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
